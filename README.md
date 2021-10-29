@@ -14,9 +14,9 @@ To run this example, either download the 8 files:
 
 to the same directory and open them with Jupyter Notebook on your own machine (Jupyter must already be installed), or click the Binder link below to run it in a remote Docker container.
 
-This notebook depends on PyNWB, a Python NWB package that provides the HDF5 interface used for writing to NWB format. This notebook was written using version 2.0.0 of PyNWB.
-
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/adrian-foy/IntanToNWB/HEAD)
+
+This notebook depends on PyNWB, a Python NWB package that provides the HDF5 interface used for writing to NWB format. This notebook was written using version 2.0.0 of PyNWB.
 
 ## Usage
 To read data from Intan files (.rhd or .rhs, or for other file formats, .dat), bring those files to the same directory this notebook is in, and change the "File to convert" to the file you wish to convert. After a period of time (progress can be monitored by reading the output print statements), an output file with the extension .nwb will be written in this directory.
