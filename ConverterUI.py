@@ -15,7 +15,7 @@ class ConverterUI:
         self.settings_label = widgets.HTML(value='<b>Conversion Settings</b>')
         
         self.filename_label = widgets.Label('File to convert:')
-        self.filename_text = widgets.Text(value='my_intan_file.rhd')
+        self.filename_text = widgets.Text(value='example_intan_file.rhd')
         
         self.text_layout = widgets.Layout(width='auto')
         self.manual_start_time_checkbox = widgets.Checkbox(description='Manual session start time', value=False, indent=False)
