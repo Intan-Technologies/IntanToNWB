@@ -1,5 +1,5 @@
 # IntanToNWB
-Convert Intan (rhd or rhs) files to NWB file format
+Convert Intan (rhd or rhs) files to NWB file format.
 
 This program takes all data from an Intan file (.rhd or .rhs) and converts it to an .nwb file, an open-source data standard described by Neurodata Without Borders (NWB). NWB aims to encourage adoption of a unified data format to facilitate the sharing, archiving, use, and analysis of data by removing the barriers associated with data from different sources being stored in non-standard ways. More information on NWB can be found here: https://www.nwb.org/ . A large archive of neurophysiology data, DANDI (Distributed Archives for Neurophysiology Data Integration), is publicly available here: https://www.dandiarchive.org/ . This project hosts a vast number of datasets in the NWB format.
 
