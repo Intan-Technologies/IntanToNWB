@@ -15,7 +15,7 @@ class ConverterUI:
         self.settings_label = widgets.HTML(value='<b>Conversion Settings</b>')
         
         self.filename_label = widgets.Label('File to convert:')
-        self.filename_text = widgets.Text(value='my_intan_file.rhd')
+        self.filename_text = widgets.Text(value='example_intan_file.rhd')
         self.filename_text.observe(self.change_intan_filename_eventhandler, names='value')
         
         self.out_filename_label = widgets.Label('Output filename (my_intan_file.nwb if left empty):')
