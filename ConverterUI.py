@@ -15,21 +15,32 @@ class ConverterUI:
         self.settings_label = widgets.HTML(value='<b>Conversion Settings</b>')
         
         self.filename_label = widgets.Label('File to convert:')
-        self.filename_text = widgets.Text(value='example_intan_file.rhd')
+        self.filename_text = widgets.Text(value='my_intan_file.rhd')
+        self.filename_text.observe(self.change_intan_filename_eventhandler, names='value')
+        
+        self.out_filename_label = widgets.Label('Output filename (my_intan_file.nwb if left empty):')
+        self.out_filename_text = widgets.Text(value='')
         
         self.text_layout = widgets.Layout(width='auto')
         self.manual_start_time_checkbox = widgets.Checkbox(description='Manual session start time', value=False, indent=False)
         self.manual_start_time_checkbox.observe(self.toggle_checkbox_eventhandler)
         self.manual_start_time_label = widgets.Label(value='If not manually specified, start time will be inferred from timestamp at end of filename.')
-        self.manual_start_time_year = widgets.BoundedIntText(value=2021, min=1, max=3000, step=1, description='Year', layout=self.text_layout)
+        self.manual_start_time_year = widgets.BoundedIntText(value=2022, min=1, max=3000, step=1, description='Year', layout=self.text_layout)
         self.manual_start_time_month = widgets.BoundedIntText(value=1, min=1, max=12, step=1, description='Month', layout=self.text_layout)
         self.manual_start_time_day = widgets.BoundedIntText(value=1, min=1, max=31, step=1, description='Day', layout=self.text_layout)
         self.manual_start_time_hour = widgets.BoundedIntText(value=0, min=0, max=23, step=1, description='Hour', layout=self.text_layout)
-        self.manual_start_time_minute = widgets.BoundedIntText(value=0, min=0, max=60, step=1, description='Minute', layout=self.text_layout)
-        self.manual_start_time_second = widgets.BoundedIntText(value=0, min=0, max=60, step=1, description='Second', layout=self.text_layout)
+        self.manual_start_time_minute = widgets.BoundedIntText(value=0, min=0, max=59, step=1, description='Minute', layout=self.text_layout)
+        self.manual_start_time_second = widgets.BoundedIntText(value=0, min=0, max=59, step=1, description='Second', layout=self.text_layout)
+        
+        self.manual_session_description_checkbox = widgets.Checkbox(description='Manual session description', value=False, indent=False)
+        self.manual_session_description_checkbox.observe(self.toggle_checkbox_eventhandler)
+        self.manual_session_description_label = widgets.Label(value='If not manually specified, description will be Note1 + Note2 + Note3 of the Intan file.')
+        
+        self.manual_session_description_text_label = widgets.Label(value='Session description')
+        self.manual_session_description_text = widgets.Text(value='')
         
         self.subject_warning = widgets.HTML(value='<br>')
-        self.subject_checkbox = widgets.Checkbox(description='Include Subject Metadata in NWB File', value=True, indent=False)
+        self.subject_checkbox = widgets.Checkbox(description='Include subject metadata in NWB file', value=True, indent=False)
         self.subject_checkbox.observe(self.toggle_checkbox_eventhandler)
 
         self.label_layout = widgets.Layout(width='100px')
@@ -65,31 +76,37 @@ class ConverterUI:
         self.strain = widgets.Text(placeholder='C57BL/6J')
         self.strain_description = widgets.Label('The strain of the subject.')
         
-        self.dob_checkbox = widgets.Checkbox(description='Include Date of Birth', value=False, indent=False)
+        self.dob_checkbox = widgets.Checkbox(description='Include date of birth', value=False, indent=False)
         self.dob_checkbox.observe(self.toggle_checkbox_eventhandler)
-        self.dob_year = widgets.BoundedIntText(value=2021, min=1, max=3000, step=1, description='Year', layout=self.text_layout)
+        self.dob_year = widgets.BoundedIntText(value=2022, min=1, max=3000, step=1, description='Year', layout=self.text_layout)
         self.dob_month = widgets.BoundedIntText(value=1, min=1, max=12, step=1, description='Month', layout=self.text_layout)
         self.dob_day = widgets.BoundedIntText(value=1, min=1, max=31, step=1, description='Day', layout=self.text_layout)
 
-        self.compression_checkbox = widgets.Checkbox(description='Enable Compression', value=True, indent=False)
+        self.compression_checkbox = widgets.Checkbox(description='Enable compression', value=True, indent=False)
         self.compression_checkbox.observe(self.toggle_checkbox_eventhandler)
 
         self.compression_slider = widgets.IntSlider(description='Level', min=0, max=9, step=1, value=4)
 
-        self.blocks_per_chunk_label = widgets.Label('Data Blocks Per Chunk')
+        self.blocks_per_chunk_label = widgets.Label('Data blocks per chunk')
         self.blocks_per_chunk_text = widgets.BoundedIntText(min=1, max=100000, step=1, value=1000)
 
-        self.lowpass_description_label = widgets.Label('Lowpass Filter Description (filter order, type, cutoff frequency, etc.)')
+        self.lowpass_description_label = widgets.Label('Lowpass filter description (filter order, type, cutoff frequency, etc.)')
         self.lowpass_description_text = widgets.Text(value='Unknown lowpass filtering process')
 
-        self.highpass_description_label = widgets.Label('Highpass Filter Description (filter order, type, cutoff frequency, etc.)')
+        self.highpass_description_label = widgets.Label('Highpass filter description (filter order, type, cutoff frequency, etc.)')
         self.highpass_description_text = widgets.Text(value='Unknown highpass filtering process')
 
-        self.merge_checkbox = widgets.Checkbox(description='Merge Multiple Contiguous Files', value=False, indent=False)
+        self.merge_checkbox = widgets.Checkbox(description='Merge multiple contiguous files', value=False, indent=False)
         self.merge_checkbox.observe(self.toggle_checkbox_eventhandler)
         self.merge_label = widgets.Label('If selected, this program will attempt to include data from all other traditional-format files in this directory.')
         
+        self.load_settings_checkbox = widgets.Checkbox(description='Load conversion settings file', value=False, indent=False)
+        self.load_settings_checkbox.observe(self.toggle_checkbox_eventhandler)
+        self.load_settings_label = widgets.Label('If selected, all settings from UI will be ignored.')
+        self.load_settings_filename_text = widgets.Text(placeholder='Example_NWB_Conversion_Settings.xlsx')
+        
         self.filename_row = widgets.HBox([self.filename_label, self.filename_text])
+        self.out_filename_row = widgets.HBox([self.out_filename_label, self.out_filename_text])
         self.manual_start_time_row1 = widgets.HBox([self.manual_start_time_checkbox,
                                                     self.manual_start_time_label
                                                    ])
@@ -100,6 +117,12 @@ class ConverterUI:
                                                     self.manual_start_time_minute,
                                                     self.manual_start_time_second
                                                    ])
+        self.manual_session_description_row1 = widgets.HBox([self.manual_session_description_checkbox,
+                                                             self.manual_session_description_label
+                                                            ])
+        self.manual_session_description_row2 = widgets.HBox([self.manual_session_description_text_label,
+                                                             self.manual_session_description_text
+                                                            ])
 
         self.age_row = widgets.HBox([self.age_label, self.age, self.age_description])
         self.description_row = widgets.HBox([self.description_label, self.description, self.description_description])
@@ -131,7 +154,8 @@ class ConverterUI:
         self.lowpass_row = widgets.HBox([self.lowpass_description_label, self.lowpass_description_text])
         self.highpass_row = widgets.HBox([self.highpass_description_label, self.highpass_description_text])
         self.merge_row = widgets.HBox([self.merge_checkbox, self.merge_label])
-        self.advanced_column = widgets.VBox([self.blocks_per_chunk_row, self.compression_row, self.lowpass_row, self.highpass_row, self.merge_row])
+        self.load_settings_row = widgets.HBox([self.load_settings_checkbox, self.load_settings_label, self.load_settings_filename_text])
+        self.advanced_column = widgets.VBox([self.blocks_per_chunk_row, self.compression_row, self.lowpass_row, self.highpass_row, self.merge_row, self.load_settings_row])
 
         self.begin_button = widgets.Button(description='Begin Conversion')
         self.begin_button.on_click(self.begin_eventhandler)
@@ -153,6 +177,9 @@ class ConverterUI:
         # Display all widgets
         display(self.settings_label)
         display(self.filename_row)
+        display(self.out_filename_row)
+        display(self.manual_session_description_row1)
+        display(self.manual_session_description_row2)
         display(self.manual_start_time_row1)
         display(self.manual_start_time_row2)
         display(self.subject_accordion)
@@ -177,8 +204,34 @@ class ConverterUI:
         # Ignore events that are not a change of value
         if not (event.name == 'value' and event.type == 'change'):
             return
+        
+        # If the 'Load Conversion Settings File' checkbox is ticked, determine if all UI elements should be disabled
+        if event.owner.description == 'Load conversion settings file':
+            if event.owner.value:
+                self.update_widgets(global_disable=True, exception_for_load_settings_widgets=True)
+                return
 
         self.update_widgets()
+        
+    def change_intan_filename_eventhandler(self, obj):
+        """ Callback function for when the user changes the content of the Intan file name field.
+        Take the contents of the filename (minus the last 4 characters for .rhd or .rhs), add the
+        .nwb suffix, and display the default output filename for when the output file name field
+        is left empty.
+        
+        Parameters
+        ----------
+        obj : traitlets.utils.bunch.Bunch
+            Information about the object that triggered this callback function
+            
+        Returns
+        -------
+        None
+        """
+        
+        intan_filename = self.filename_text.value
+        auto_detect_name = intan_filename[:-4] + '.nwb'
+        self.out_filename_label.value = 'Output filename (' + auto_detect_name + ' if left empty):'
         
     def begin_eventhandler(self, obj):
         """ Callback function for when the user begins conversion.
@@ -194,29 +247,61 @@ class ConverterUI:
         -------
         None
         """
+        
+        # If settings file is loaded, just pass NWB conversion the filename
+        if self.load_settings_checkbox.value:
+            
+            # Disable all widgets (including load settings widgets) during conversion
+            self.update_widgets(global_disable=True)
+            
+            # Convert to NWB
+            convert_to_nwb(settings_filename=self.load_settings_filename_text.value)
+            
+            # Update widgets to their proper disable state (all but load settings disabled)
+            self.update_widgets(global_disable=True, exception_for_load_settings_widgets=True)
+            
+            return
+            
+        # Otherwise, get NWB settings from UI and pass these to NWB conversion
+        # Check if specified file ends with .rhd or .rhs. If not, give an explanatory message and return
+        if self.filename_text.value[-3:] != 'rhd' and self.filename_text.value[-3:] != 'rhs':
+            print('Conversion canceled. Please select an rhd or rhs file to convert.')
+            print('For traditional file format, please specify the data file itself.')
+            print('For other file formats, please specify the header file (dat files in this directory will be included in the conversion).')
+            return
+        
         # Global disable all widgets during conversion
-        self.update_widgets(True)
+        self.update_widgets(global_disable=True)
 
         # Gather subject and manual start time info from UI
         subject = self.get_subject()
         manual_start_time = self.get_manual_start_time()
-
-        # Complete NWB conversion
+        
+        # Gather NWB output file name from UI
+        nwb_filename = None
+        if self.out_filename_text.value != '':
+            nwb_filename = self.out_filename_text.value
+            
+        session_description = None
+        if self.manual_session_description_checkbox.value:
+            session_description = self.manual_session_description_text.value
+        
         convert_to_nwb(intan_filename=self.filename_text.value,
+                       nwb_filename=nwb_filename,
+                       session_description=session_description,
                        blocks_per_chunk=self.blocks_per_chunk_text.value,
                        use_compression=self.compression_checkbox.value,
                        compression_level=self.compression_slider.value,
-                       subject=subject,
-                       manual_start_time=manual_start_time,
                        lowpass_description=self.lowpass_description_text.value,
                        highpass_description=self.highpass_description_text.value,
-                       merge=self.merge_checkbox.value
-                      )
+                       merge_files=self.merge_checkbox.value,
+                       subject=subject,
+                       manual_start_time=manual_start_time)
 
         # After conversion finished, update widgets to their proper 'disable' state
         self.update_widgets()
         
-    def update_widgets(self, global_disable=False):
+    def update_widgets(self, global_disable=False, exception_for_load_settings_widgets=False):
         """ Update all widgets, checking each group for the proper logic to determine their 'disable' state.
         If global_disable is True, then disable all widgets.
 
@@ -224,6 +309,8 @@ class ConverterUI:
         ----------
         global_disable :
             Whether all widgets should globally be disabled.
+        exception_for_load_settings_widgets :
+            Whether there should be an exception for widgets related to loading settings.
 
         Returns
         -------
@@ -232,12 +319,14 @@ class ConverterUI:
         # Update all groups of widgets
         self.update_filename(global_disable)
         self.update_manual_start_time(global_disable)
+        self.update_manual_session_description(global_disable)
         self.update_subject(global_disable)
         self.update_dob(global_disable)
         self.update_compression(global_disable)
         self.update_filter_descriptions(global_disable)
         self.update_merge(global_disable)
         self.update_blocks_per_chunk(global_disable)
+        self.update_load_conversion_settings(global_disable, exception_for_load_settings_widgets)
 
     def update_filename(self, global_disable=False):
         """ Update filename widget, only disabling it if widgets are globally disabled.
@@ -278,6 +367,26 @@ class ConverterUI:
 
         # Disable manual start time checkbox for global disable
         self.manual_start_time_checkbox.disabled = global_disable
+        
+    def update_manual_session_description(self, global_disable=False):
+        """ Update manual session description widgets, disabling them depending on checkbox state
+        or if widgets are globally disabled.
+        
+        Parameters
+        ----------
+        global_disable :
+            Whether all widgets should globally be disabled.
+            
+        Returns
+        -------
+        None
+        """
+        # Disable manual session description widgets for global disable, or if manual session description checkbox is unchecked
+        disable = not self.manual_session_description_checkbox.value or global_disable
+        self.manual_session_description_text.disabled = disable
+        
+        # Disable manual session description checkbox for global disable
+        self.manual_session_description_checkbox.disabled = global_disable
 
     def update_dob(self, global_disable=False):
         """ Update date-of-birth widgets, disabling them depending on checkbox states
@@ -365,6 +474,28 @@ class ConverterUI:
         """
         # Disable blocks per chunk text for global disable
         self.blocks_per_chunk_text.disabled = global_disable
+        
+    def update_load_conversion_settings(self, global_disable=False, exception_for_load_settings_widgets=False):
+        """ Update load-conversion-settings widgets, disabling them if widgets are globally disabled.
+        
+        Parameters
+        ----------
+        global_disable :
+            Whether all widgets should globally be disabled.
+        exception_for_load_settings_widgets:
+            Whether these widgets should be exempt from global disable because they're related to loading settings
+        
+        Returns
+        -------
+        None
+        """
+        if global_disable and not exception_for_load_settings_widgets:
+            self.load_settings_checkbox.disabled = True
+            self.load_settings_filename_text.disabled = True
+            
+        else:
+            self.load_settings_checkbox.disabled = False
+            self.load_settings_filename_text.disabled = False
 
     def update_subject(self, global_disable=False):
         """ Update subject widgets, disabling them based on checkbox state

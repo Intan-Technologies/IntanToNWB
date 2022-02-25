@@ -3,7 +3,7 @@ import struct, os, sys
 from SetupResources import *
 
 def read_header(filename, print_status=True):
-    """Read the Intan File FormFat header from the given file.
+    """Read the Intan File Format header from the given file.
     
     Parameters
     ----------

@@ -2,30 +2,45 @@ import math, time, pynwb
 import os.path
 
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from datetime import datetime, timedelta
 
 from ReadIntanData import *
 from ProcessData import *
 from WriteNWB import *
 from SetupResources import *
 from ReadIntanHeader import *
+from ReadSettingsFile import *
 
-def convert_to_nwb(intan_filename,
+def convert_to_nwb(settings_filename=None,
+                   intan_filename=None,
+                   nwb_filename=None,
+                   session_description=None,
                    blocks_per_chunk=1000,
                    use_compression=True,
                    compression_level=4,
-                   subject=None,
-                   manual_start_time=None,
                    lowpass_description=None,
                    highpass_description=None,
-                   merge=None
+                   merge_files=None,
+                   subject=None,
+                   manual_start_time=None
                   ):
     """ Convert the specified Intan file(s) to NWB format.
     
     Parameters
     ----------
-    intan_filename : str
+    settings_filename : str or None
+        Name of settings file to load to get conversion settings. If this parameter is supplied as anything
+        other than None, then all other parameters will be ignored (because they will have their values determined
+        from said settings file).
+    intan_filename : str or None
         Name of .rhd file to convert. If this is an 'info.rhd' file (not from the Traditional File Format), then
-        other files in this directory with a .dat suffix will also be read as data sources
+        other files in this directory with a .dat suffix will also be read as data sources.
+    nwb_filename : str or None
+        If present, name of output .nwb file. If not present, this will use the same base filename as the intan_filename,
+        just with a different extension.
+    session_description : str or None
+        Text to populate session description field of NWB file. If this parameter is not supplied, it will be the
+        concatenation of Note1, Note2, and Note3 from the Intan (.rhd or .rhs) file
     blocks_per_chunk : int
         Number of data blocks that should be included in each chunk of data.
         Higher values require more RAM, but may be faster and more efficient
@@ -34,25 +49,92 @@ def convert_to_nwb(intan_filename,
     compression_level : int
         Int ranging from 0 to 9 indicating the level of 'gzip' compression.
         Higher values decrease written NWB file size, but may increase the amount of time required to convert.
-    subject : pynwb.file.Subject or None
-        If present, this subject object contains metadata about the subject from which this data was gathered.
-        Not including this will result in an NWB file that is ineligible for the DANDI archive.
-    manual_start_time : datetime.datetime or None
-        If present, this contains the date and time that the recording session started.
-        If not, an attempt will be made to parse the .rhd file name for a timestamp to use.
     lowpass_description : str or None
         If present, this describes the filter (type, order, cutoff frequency, etc.) used to generate lowpass data file.
         Only applies if lowpass data was saved ('one file per signal type' or 'one file per channel' file format).
     highpass_description : str or None
         If present, this describes the filter (type, order, cutoff frequency, etc.) used to generate highpass data file.
         Only applies if highpass data was saved ('one file per signal type' or 'one file per channel' file format).
-    merge : bool or None
+    merge_files : bool or None
         If present, whether merging should be attempted with other Intan files in this directory.
+    subject : pynwb.file.Subject or None
+        If present, this subject object contains metadata about the subject from which this data was gathered.
+        Not including this will result in an NWB file that is ineligible for the DANDI archive.
+    manual_start_time : datetime.datetime or None
+        If present, this contains the date and time that the recording session started.
+        If not, an attempt will be made to parse the .rhd file name for a timestamp to use.
     
     Returns
     -------
     None
     """
+    
+    # If settings filename has been provided, overwrite all other input parameters with values from the settings file
+    if settings_filename is not None:
+        intan_filename = read_field(settings_filename, 'intan_filename')
+        nwb_filename = read_field(settings_filename, 'nwb_filename')
+        session_description = read_field(settings_filename, 'session_description')
+        blocks_per_chunk = read_field(settings_filename, 'blocks_per_chunk', 'int')
+        use_compression = read_field(settings_filename, 'use_compression', 'bool')
+        compression_level = read_field(settings_filename, 'compression_level', 'int')
+        lowpass_description = read_field(settings_filename, 'lowpass_description')
+        highpass_description = read_field(settings_filename, 'highpass_description')
+        merge_files = read_field(settings_filename, 'merge_files', 'bool')
+        
+        use_manual_session_start_time = read_field(settings_filename, 'use_manual_session_start_time', 'bool')
+        manual_session_start_year = read_field(settings_filename, 'manual_session_start_year', 'int')
+        manual_session_start_month = read_field(settings_filename, 'manual_session_start_month', 'int')
+        manual_session_start_day = read_field(settings_filename, 'manual_session_start_day', 'int')
+        manual_session_start_hour = read_field(settings_filename, 'manual_session_start_hour', 'int')
+        manual_session_start_minute = read_field(settings_filename, 'manual_session_start_minute', 'int')
+        manual_session_start_second = read_field(settings_filename, 'manual_session_start_second', 'int')
+        
+        if use_manual_session_start_time:
+            manual_start_time = datetime(manual_session_start_year,
+                                         manual_session_start_month,
+                                         manual_session_start_day,
+                                         manual_session_start_hour,
+                                         manual_session_start_minute,
+                                         manual_session_start_second,
+                                         tzinfo = tzlocal()
+                                        )
+        
+        include_subject_metadata = read_field(settings_filename, 'include_subject_metadata', 'bool')
+        subject_age = read_field(settings_filename, 'subject_age')
+        subject_description = read_field(settings_filename, 'subject_description')
+        subject_genotype = read_field(settings_filename, 'subject_genotype')
+        subject_sex = read_field(settings_filename, 'subject_sex')
+        subject_species = read_field(settings_filename, 'subject_species')
+        subject_id = read_field(settings_filename, 'subject_id')
+        subject_weight = read_field(settings_filename, 'subject_weight') + ' kg'
+        subject_strain = read_field(settings_filename, 'subject_strain')
+        
+        include_subject_dob = read_field(settings_filename, 'include_subject_dob', 'bool')
+        subject_dob_year = read_field(settings_filename, 'subject_dob_year', 'int')
+        subject_dob_month = read_field(settings_filename, 'subject_dob_month', 'int')
+        subject_dob_day = read_field(settings_filename, 'subject_dob_day', 'int')
+        
+        subject_date_of_birth = None
+        if include_subject_dob:
+            subject_date_of_birth = datetime(subject_dob_year,
+                                             subject_dob_month,
+                                             subject_dob_day,
+                                             tzinfo=tzlocal()
+                                            )
+            
+        subject = None
+        if include_subject_metadata:
+            subject = pynwb.file.Subject(age=subject_age,
+                                         description=subject_description,
+                                         genotype=subject_genotype,
+                                         sex=subject_sex,
+                                         species=subject_species,
+                                         subject_id=subject_id,
+                                         weight=subject_weight,
+                                         date_of_birth=subject_date_of_birth,
+                                         strain=subject_strain
+                                        )
+    
     # Start timing
     tic = time.time()
     
@@ -63,8 +145,18 @@ def convert_to_nwb(intan_filename,
     header = read_header(intan_filename)
     
     # If merging is desired, get list of other files that are mergeable (their headers are similar enough to allow it)
-    if merge:
-        mergeable_files = get_mergeable_files(header)
+    if merge_files:
+        
+        # Check that this header contains data (traditional file format), because merging only applies to traditional file format data
+        if not header['data_present']:
+            print('Data is not present in header file, indicating this data is not in traditional file format.')
+            print('Merging not applicable, as this is intended to merge multiple consecutive rhd/rhs files over' +
+                  ' the course of a recording session. Non-traditional file formats have no size limit, so each' +
+                  ' file should extend the length of the entire recording session.')
+            merge_files = false
+            
+        else:
+            mergeable_files = get_mergeable_files(header)
     
     # Output a summary of recorded data
     print_summary(header)
@@ -78,21 +170,29 @@ def convert_to_nwb(intan_filename,
     # Calculate how many samples of each signal type are present
     total_num_amp_samples = header['num_samples_per_data_block'] * total_num_data_blocks
     
-    if merge:
+    if merge_files:
         total_num_amp_samples += merged_samples('amplifier', mergeable_files)
     
     # Get filename and attempt to get session start time from filename
     out_filename, session_start_time = parse_filename(intan_filename)
     
+    # If the user specified the output filename, use that instead
+    if nwb_filename is not None:
+        if nwb_filename[-4:] == '.nwb':
+            out_filename = nwb_filename
+        else:
+            out_filename = nwb_filename + '.nwb'
+    
     # If manual start time was specified, overwrite the automatically generated start time
     if manual_start_time is not None:
         session_start_time = manual_start_time
     
-    # Get notes from header
-    if not (header['notes']['note1'] or header['notes']['note2'] or header['notes']['note3']):
-        session_description = 'no description provided'
-    else:
-        session_description = header['notes']['note1'] + ', ' + header['notes']['note2'] + ', ' + header['notes']['note3']
+    # If session description wasnn't provided, get notes from header
+    if session_description is None:
+        if not (header['notes']['note1'] or header['notes']['note2'] or header['notes']['note3']):
+            session_description = 'no description provided'
+        else:
+            session_description = header['notes']['note1'] + ', ' + header['notes']['note2'] + ', ' + header['notes']['note3']
     
     # Set up NWB file
     nwbfile = pynwb.NWBFile(session_description=session_description,
@@ -117,6 +217,9 @@ def convert_to_nwb(intan_filename,
     previous_samples = [0] * header['num_amplifier_channels'] * 2
     
     rhd = header['filetype'] == 'rhd'
+    
+    chunk_tic = time.time()
+    remaining_blocks = total_num_data_blocks
             
     # For each chunk in chunks_to_read, read the Intan data and write the NWB data
     for chunk in range(len(chunks_to_read)):
@@ -264,7 +367,7 @@ def convert_to_nwb(intan_filename,
                                                   resolution=37.4e-6,
                                                   unit='volts',
                                                   timestamps=wrapped_data.t_aux_input,
-                                                  comments='voltage data recorded from the auxiliary inputx of an Intan Technologies chip',
+                                                  comments='voltage data recorded from the auxiliary input of an Intan Technologies chip',
                                                   description='voltage data recorded from the auxiliary input of an Intan Technologies chip')
                     nwbfile.add_acquisition(aux_input_series)      
 
@@ -489,7 +592,36 @@ def convert_to_nwb(intan_filename,
         
         blocks_completed = blocks_completed + num_data_blocks
         percent_done = (blocks_completed / total_num_data_blocks) * 100
-        print('Completed chunk {} ... {:0.2f}% done...'.format(chunk, percent_done))
+        
+        # Get elapsed # of seconds from last chunk
+        last_chunk_tic = chunk_tic
+        chunk_tic = time.time()
+        elapsed_s_from_last_chunk = chunk_tic - last_chunk_tic
+        
+        # Divide # blocks of this chunk by # seconds to get blocks/second
+        blocks_per_second = num_data_blocks / elapsed_s_from_last_chunk
+        
+        # Get # of blocks remaining in file, calculate seconds remaining
+        remaining_blocks = remaining_blocks - num_data_blocks
+        remaining_s = remaining_blocks / blocks_per_second
+        remaining_s = remaining_s
+        
+        # Convert remaining time to HH::MM::SS
+        remaining_time = timedelta(seconds=remaining_s)
+        remaining_time_str = str(remaining_time).split('.', 2)[0]
+        
+        # Add this # of seconds to current datetime, report that time
+        estimated_time_of_completion = datetime.now() + remaining_time
+        
+        # If the estimated completion day is different than today, then include the full date in the time of completion
+        if estimated_time_of_completion.year != datetime.now().year or estimated_time_of_completion.month != datetime.now().month or estimated_time_of_completion.day != datetime.now().day:
+            estimated_time_of_completion_str = estimated_time_of_completion.strftime("%Y:%m:%d:%H:%M:%S")
+            
+        # If the estimated completion day is today, then just include hours, minutes, and seconds
+        else:
+            estimated_time_of_completion_str = estimated_time_of_completion.strftime("%H:%M:%S")
+        
+        print('Completed chunk {}. {:0.2f}% done. Estimated time remaining: {}. Estimated time of completion: {}'.format(chunk, percent_done, remaining_time_str, estimated_time_of_completion_str))
         
     # Report whether gaps in timestamp data were found.
     if num_gaps == 0:
@@ -507,7 +639,7 @@ def convert_to_nwb(intan_filename,
         if type(fid) != bool: # aux_in_amplifier is a boolean value in the fids dictionary, so don't treat it as a fid
             fid.close()
         
-    if merge:
+    if merge_files:
         # Possible to do: this section is basically an abridged repeat of original file reading,
         # so it may be worth creating some high-level functions to allow for code reuse
         for header in mergeable_files:
@@ -529,6 +661,9 @@ def convert_to_nwb(intan_filename,
             chunks_to_read = initialize_chunk_list(total_num_data_blocks, blocks_per_chunk)
             num_gaps = previous_timestamp = blocks_completed = 0
             previous_samples = [0] * header['num_amplifier_channels'] * 2
+            
+            chunk_tic = time.time()
+            remaining_blocks = total_num_data_blocks
             
             # For each chunk in chunks_to_read, read the Intan data and write the NWB data
             for chunk in range(len(chunks_to_read)):
@@ -650,7 +785,28 @@ def convert_to_nwb(intan_filename,
                 
                 blocks_completed = blocks_completed + num_data_blocks
                 percent_done = (blocks_completed / total_num_data_blocks) * 100
-                print('Completed chunk {} ... {:0.2f}% done...'.format(chunk, percent_done))
+                
+                # Get elapsed # of seconds from last chunk
+                last_chunk_tic = chunk_tic
+                chunk_tic = time.time()
+                elapsed_s_from_last_chunk = chunk_tic - last_chunk_tic
+                
+                # Divide # blocks of this chunk by # seconds to get blocks/second
+                blocks_per_second = num_data_blocks / elapsed_s_from_last_chunk
+                
+                # Get # of blocks remaining in file, calculate seconds remaining
+                remaining_blocks = remaining_blocks - num_data_blocks
+                remaining_s = remaining_blocks / blocks_per_second
+                
+                # Convert remaining time to HH::MM::SS
+                remaining_time = timedelta(seconds=remaining_s)
+                remaining_time_str = str(remaining_time).split('.', 2)[0]
+                
+                # Add this # of seconds to current datetime, report that time
+                estimated_time_of_completion = datetime.now() + remaining_time
+                estimated_time_of_completion_str = estimated_time_of_completion.strftime("%H:%M:%S")
+                
+                print('Completed chunk {}. {:0.2f}% done. Estimated time remaining: {}. Estimated time of completion: {}'.format(chunk, percent_done, remaining_time_str, estimated_time_of_completion_str))
             
     
     print('Done! Elapsed time: {:0.2f} seconds'.format(time.time() - tic))
