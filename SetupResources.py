@@ -30,11 +30,11 @@ def preallocate_data(header, file_format, amp_samples):
     if header['filetype'] == 'rhd':
 
         # For files prior to v1.2, read timestamps as uint. Otherwise, read them as int.
-        dtype = np.int if later_than_v1_2(header) else np.uint
+        dtype = np.int_ if later_than_v1_2(header) else np.uint
         data['t_amplifier'] = np.zeros(amp_samples, dtype=dtype)
 
         # For traditional file format, read amplifier samples as uint. Otherwise, read them as int.
-        dtype = np.uint if file_format == 'traditional' else np.int
+        dtype = np.uint if file_format == 'traditional' else np.int_
         data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=dtype)
 
         # If lowpass data is present, preallocate an array for it (size reduced by the downsample factor if downsampling occurred)
@@ -63,10 +63,10 @@ def preallocate_data(header, file_format, amp_samples):
         
     else:
         
-        data['t'] = np.zeros(amp_samples, dtype=np.int)
+        data['t'] = np.zeros(amp_samples, dtype=np.int_)
         
         # For traditional file format, read amplifier samples as uint. Otherwise, read them as int.
-        dtype = np.uint if file_format == 'traditional' else np.int
+        dtype = np.uint if file_format == 'traditional' else np.int_
         data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=dtype)
         
         # If lowpass data is present, preallocate an array for it (size reduced by the downsample factor if downsampling occurred)
@@ -81,8 +81,8 @@ def preallocate_data(header, file_format, amp_samples):
         if header['dc_amplifier_data_saved']:
             data['dc_amplifier_data'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=dtype)
             
-        data['stim_data_raw'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=np.int)
-        data['stim_data'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=np.int)
+        data['stim_data_raw'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=np.int_)
+        data['stim_data'] = np.zeros([header['num_amplifier_channels'], amp_samples], dtype=np.int_)
         
         data['board_adc_data'] = np.zeros([header['num_board_adc_channels'], amp_samples], dtype=np.uint)
         data['board_dac_data'] = np.zeros([header['num_board_dac_channels'], amp_samples], dtype=np.uint)
